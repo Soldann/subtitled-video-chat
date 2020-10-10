@@ -10,3 +10,5 @@ navigator.getUserMedia(
       console.warn(error.message);
     }
    );
+
+   var socket = io();
