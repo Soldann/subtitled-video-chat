@@ -51,7 +51,7 @@ socket.on("update-user-list", ({ users }) => {
   userContainerEl.appendChild(usernameEl);
   
   userContainerEl.addEventListener("click", () => {
-    unselectUsersFromList();
+    //unselectUsersFromList();
     userContainerEl.setAttribute("class", "active-user active-user--selected");
     const talkingWithInfo = document.getElementById("talking-with-info");
     talkingWithInfo.innerHTML = `Talking with: "Socket: ${socketId}"`;
@@ -59,3 +59,33 @@ socket.on("update-user-list", ({ users }) => {
   }); 
   return userContainerEl;
  }
+
+ 
+ const { RTCPeerConnection, RTCSessionDescription } = window;
+ var peerConnection = new RTCPeerConnection();
+ 
+async function callUser(socketId) {
+  
+  //RTCPeerConnection = window.RTCPeerConnection || window.webkitRTCPeerConnection;
+
+  const offer = await peerConnection.createOffer();
+  await peerConnection.setLocalDescription(new RTCSessionDescription(offer));
+  
+  socket.emit("call-user", {
+    offer,
+    to: socketId
+  });
+ }
+
+ socket.on("call-made", async data => {
+  await peerConnection.setRemoteDescription(
+    new RTCSessionDescription(data.offer)
+  );
+  const answer = await peerConnection.createAnswer();
+  await peerConnection.setLocalDescription(new RTCSessionDescription(answer));
+  
+  socket.emit("make-answer", {
+    answer,
+    to: data.socket
+  });
+ });

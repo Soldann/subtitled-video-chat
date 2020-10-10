@@ -57,6 +57,14 @@ export class Server {
         });
         console.log("Connection removed: " + this.activeSockets);
       });
+
+      socket.on("call-user", data => {
+        console.log("sending call");
+        socket.to(data.to).emit("call-made", {
+          offer: data.offer,
+          socket: socket.id
+        });
+      });
     }
 
     console.log("Connection detected. After: " + this.activeSockets);
