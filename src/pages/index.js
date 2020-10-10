@@ -123,9 +123,9 @@ function handleICECandidateEvent(event) {
   }
 }
 
-var debugStreams = null;
+var debugStreams = [];
 function handleTrackEvent(event) {
-  debugStreams = event.streams;
+  debugStreams.concat(event.streams);
   console.log("recieved a new stream");
   document.getElementById("remote-video").srcObject = event.streams[0];
 }
