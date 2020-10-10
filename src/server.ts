@@ -73,6 +73,14 @@ export class Server {
             answer: data.answer,
           });
         });
+
+        socket.on("new-ice-candidate", (data) => {
+          console.log("sending ICE candidate");
+          socket.to(data.target).emit("send-ice-candidate", {
+            socket: socket.id,
+            candidate: data.candidate,
+          });
+        });
       }
 
       console.log("Connection detected. After: " + this.activeSockets);

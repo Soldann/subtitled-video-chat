@@ -38,6 +38,7 @@ function updateUserList(socketIds) {
   });
 }
 
+var targetSocket = null;
 function createUserItemContainer(socketId) {
   const userContainerEl = document.createElement("div");
 
@@ -56,6 +57,7 @@ function createUserItemContainer(socketId) {
     const talkingWithInfo = document.getElementById("talking-with-info");
     talkingWithInfo.innerHTML = `Talking with: "Socket: ${socketId}"`;
     callUser(socketId);
+    targetSocket = socketId;
   });
   return userContainerEl;
 }
@@ -70,34 +72,62 @@ var peerConnection = new RTCPeerConnection({
    // { urls: 'stun:stun4.l.google.com:19302' }
   ]
 });
-
+/*
+  // When receiving a candidate over the socket, turn it back into a real
+  // RTCIceCandidate and add it to the peerConnection.
+function (candidate) {
+    // Update caption text
+    captionText.text("Found other user... connecting");
+    rtcCandidate = new RTCIceCandidate(candidate.candidate);
+    logIt(
+      `onCandidate <<< Received remote ICE candidate (${rtcCandidate.address} - ${rtcCandidate.relatedAddress})`
+    );
+    peerConnection.addIceCandidate(rtcCandidate);
+  },
+*/
 function handleICECandidateEvent(event) {
   if (event.candidate) {
     socket.emit("new-ice-candidate", {
-      target: targetUsername,
+      target: targetSocket,
       candidate: event.candidate,
     });
   }
 }
 
+var debugStreams = null;
 function handleTrackEvent(event) {
+  debugStreams = event.streams;
+  console.log("recieved a new stream");
   document.getElementById("remote-video").srcObject = event.streams[0];
+}
+
+function handleNegotiationNeededEvent() {
+  console.log("creating negotiation")
+  peerConnection.createOffer().then(function(offer) {
+    return peerConnection.setLocalDescription(offer);
+  })
+  .then(function() {
+    socket.emit("call-user", {
+      offer: peerConnection.localDescription,
+      to: targetSocket,
+    });
+  })
+  .catch();
 }
 
 peerConnection.onicecandidate = handleICECandidateEvent;
 peerConnection.ontrack = handleTrackEvent;
-//peerConnection.onnegotiationneeded = handleNegotiationNeededEvent;
+peerConnection.onnegotiationneeded = handleNegotiationNeededEvent;
 
 async function callUser(socketId) {
   //RTCPeerConnection = window.RTCPeerConnection || window.webkitRTCPeerConnection;
   
+  /*
   const offer = await peerConnection.createOffer();
-  await peerConnection.setLocalDescription(new RTCSessionDescription(offer));
+  await peerConnection.setLocalDescription(new RTCSessionDescription(offer)); */
 
-  socket.emit("call-user", {
-    offer: peerConnection.localDescription,
-    to: socketId,
-  });
+  var localStream = document.getElementById("local-video").srcObject;
+  localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 }
 
 socket.on("call-made", async (data) => {
@@ -105,7 +135,8 @@ socket.on("call-made", async (data) => {
     new RTCSessionDescription(data.offer)
   );
 
-  localVideo.getTracks().forEach(track => myPeerConnection.addTrack(track, localStream));
+  var localStream = document.getElementById("local-video").srcObject;  // stream.getVideoTracks()[0];
+  localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
   const answer = await peerConnection.createAnswer();
   await peerConnection.setLocalDescription(new RTCSessionDescription(answer));
@@ -130,4 +161,8 @@ socket.on("answer-made", async data => {
 
   console.log("answer made");
 
+});
+
+socket.on("send-ice-candidate", async data => {
+  peerConnection.addIceCandidate(data.candidate);
 });
