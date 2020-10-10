@@ -67,6 +67,7 @@ export class Server {
         });
 
         socket.on("make-answer", (data) => {
+          console.log("sending answer");
           socket.to(data.to).emit("answer-made", {
             socket: socket.id,
             answer: data.answer,

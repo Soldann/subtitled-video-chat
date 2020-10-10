@@ -1,15 +1,15 @@
-navigator.getUserMedia(
-  { video: true, audio: true },
-  (stream) => {
-    const localVideo = document.getElementById("local-video");
-    if (localVideo) {
-      localVideo.srcObject = stream;
-    }
-  },
-  (error) => {
-    console.warn(error.message);
-  }
-);
+ navigator.getUserMedia(
+   { video: true, audio: true },
+   (stream) => {
+     const localVideo = document.getElementById("local-video");
+     if (localVideo) {
+       localVideo.srcObject = stream;
+     }
+   },
+   (error) => {
+     console.warn(error.message);
+   }
+ );
 
 var socket = io();
 
@@ -61,16 +61,41 @@ function createUserItemContainer(socketId) {
 }
 
 const { RTCPeerConnection, RTCSessionDescription } = window;
-var peerConnection = new RTCPeerConnection();
+var peerConnection = new RTCPeerConnection({
+  iceServers: [     // Information about ICE servers - Use your own!
+    { urls: 'stun:stun.l.google.com:19302' },
+   // { urls: 'stun:stun1.l.google.com:19302' },
+  //  { urls: 'stun:stun2.l.google.com:19302' },
+   // { urls: 'stun:stun3.l.google.com:19302' },
+   // { urls: 'stun:stun4.l.google.com:19302' }
+  ]
+});
+
+function handleICECandidateEvent(event) {
+  if (event.candidate) {
+    socket.emit("new-ice-candidate", {
+      target: targetUsername,
+      candidate: event.candidate,
+    });
+  }
+}
+
+function handleTrackEvent(event) {
+  document.getElementById("remote-video").srcObject = event.streams[0];
+}
+
+peerConnection.onicecandidate = handleICECandidateEvent;
+peerConnection.ontrack = handleTrackEvent;
+//peerConnection.onnegotiationneeded = handleNegotiationNeededEvent;
 
 async function callUser(socketId) {
   //RTCPeerConnection = window.RTCPeerConnection || window.webkitRTCPeerConnection;
-
+  
   const offer = await peerConnection.createOffer();
   await peerConnection.setLocalDescription(new RTCSessionDescription(offer));
 
   socket.emit("call-user", {
-    offer,
+    offer: peerConnection.localDescription,
     to: socketId,
   });
 }
@@ -79,11 +104,30 @@ socket.on("call-made", async (data) => {
   await peerConnection.setRemoteDescription(
     new RTCSessionDescription(data.offer)
   );
+
+  localVideo.getTracks().forEach(track => myPeerConnection.addTrack(track, localStream));
+
   const answer = await peerConnection.createAnswer();
   await peerConnection.setLocalDescription(new RTCSessionDescription(answer));
 
   socket.emit("make-answer", {
-    answer,
+    answer: peerConnection.localDescription,
     to: data.socket,
   });
+});
+
+let isAlreadyCalling = false;
+
+socket.on("answer-made", async data => {
+  await peerConnection.setRemoteDescription(
+    new RTCSessionDescription(data.answer)
+  );
+  console.log("answer made1");
+  if (!isAlreadyCalling) {
+    //callUser(data.socket);
+    isAlreadyCalling = true;
+  }
+
+  console.log("answer made");
+
 });
