@@ -7,6 +7,7 @@ export class Server {
  private httpServer: HTTPServer;
  private app: Application;
  private io: SocketIOServer;
+ private activeSockets: string[] = [];
  
  private readonly DEFAULT_PORT = 80;
  
@@ -29,6 +30,36 @@ export class Server {
  private handleSocketConnection(): void {
    this.io.on("connection", socket => {
      console.log("Socket connected.");
+
+     console.log("Connection detected. Before: " + this.activeSockets);
+
+     const existingSocket = this.activeSockets.find(
+      existingSocket => existingSocket === socket.id
+    );
+
+    if (!existingSocket) {
+      this.activeSockets.push(socket.id);
+
+      socket.emit("update-user-list", {
+        users: this.activeSockets
+      });
+
+      socket.broadcast.emit("update-user-list", {
+        users: [socket.id]
+      });
+
+      socket.on("disconnect", () => {
+        this.activeSockets = this.activeSockets.filter(
+          existingSocket => existingSocket !== socket.id
+        );
+        socket.broadcast.emit("remove-user", {
+          socketId: socket.id
+        });
+        console.log("Connection removed: " + this.activeSockets);
+      });
+    }
+
+    console.log("Connection detected. After: " + this.activeSockets);
    });
  }
  
