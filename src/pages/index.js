@@ -125,7 +125,7 @@ function handleICECandidateEvent(event) {
 
 var debugStreams = [];
 function handleTrackEvent(event) {
-  debugStreams.concat(event.streams);
+  debugStreams = debugStreams.concat(event.streams);
   console.log("recieved a new stream");
   document.getElementById("remote-video").srcObject = event.streams[0];
 }
