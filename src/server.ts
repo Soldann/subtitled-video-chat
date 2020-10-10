@@ -81,6 +81,10 @@ export class Server {
             candidate: data.candidate,
           });
         });
+
+        socket.on("client-to-server-subtitles", (data) => {
+          socket.broadcast.emit("server-to-client-subtitles", data);
+        })
       }
 
       console.log("Connection detected. After: " + this.activeSockets);

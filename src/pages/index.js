@@ -1,4 +1,46 @@
- navigator.mediaDevices.getUserMedia(
+var socket = io();
+
+// voice recognition code
+class RecognitionWrapper {
+  constructor() {
+    this.recognition = new webkitSpeechRecognition();
+    this.recognition.continuous = true;
+    this.recognition.start();
+    this.setRecognition(); // sets callback
+    this.recognition.onend = event => {
+      this.recognition.start();
+    }
+
+    socket.on("server-to-client-subtitles", data => {
+      if (data.id == socket.id) {
+        return;
+      }
+
+      document.getElementById("subtitle").innerHTML = data;  // probably need to preprocess or something idk
+    });
+
+  }
+
+  setRecognition() {
+    this.recognition.onresult = (event) => {  // when we receive new recognition, broadcast it to other sockets
+      let subtitle = "";
+      for (let result of event.results) {
+          subtitle += result[0].transcript;
+      }
+      console.log(`Sending subtitles: ${subtitle}`);
+      socket.emit("client-to-server-subtitles", {
+        subtitle: subtitle,
+        id: socket.id,
+      });
+    }
+  }
+}
+
+const rw = new RecognitionWrapper();
+
+// video streaming code
+
+navigator.mediaDevices.getUserMedia(
    { video: true, audio: true }).then(
    (stream) => {
      const localVideo = document.getElementById("local-video");
@@ -11,7 +53,6 @@
    }
  );
 
-var socket = io();
 
 socket.on("update-user-list", ({ users }) => {
   updateUserList(users);
@@ -72,19 +113,7 @@ var peerConnection = new RTCPeerConnection({
    // { urls: 'stun:stun4.l.google.com:19302' }
   ]
 });
-/*
-  // When receiving a candidate over the socket, turn it back into a real
-  // RTCIceCandidate and add it to the peerConnection.
-function (candidate) {
-    // Update caption text
-    captionText.text("Found other user... connecting");
-    rtcCandidate = new RTCIceCandidate(candidate.candidate);
-    logIt(
-      `onCandidate <<< Received remote ICE candidate (${rtcCandidate.address} - ${rtcCandidate.relatedAddress})`
-    );
-    peerConnection.addIceCandidate(rtcCandidate);
-  },
-*/
+
 function handleICECandidateEvent(event) {
   if (event.candidate) {
     socket.emit("new-ice-candidate", {
@@ -102,7 +131,7 @@ function handleTrackEvent(event) {
 }
 
 function handleNegotiationNeededEvent() {
-  console.log("creating negotiation")
+  console.log("creating negotiation");
   peerConnection.createOffer().then(function(offer) {
     return peerConnection.setLocalDescription(offer);
   })
