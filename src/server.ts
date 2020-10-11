@@ -88,6 +88,10 @@ export class Server {
         })
       }
 
+      socket.on("tell-clicked", data => {
+        socket.to(data.to).emit("now-you-host", data);
+      });
+
       console.log("Connection detected. After: " + this.activeSockets);
     });
   }

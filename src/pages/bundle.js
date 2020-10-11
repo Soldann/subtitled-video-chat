@@ -8160,9 +8160,9 @@ var socket = io();
 // video streaming code
 
 let Peer = require('simple-peer');
-
+var obj = {};
 console.log('hi');
-window.connect = false;
+
 
 navigator.mediaDevices.getUserMedia(
   { video: true, audio: true }).then(
@@ -8208,28 +8208,34 @@ navigator.mediaDevices.getUserMedia(
           userContainerEl.setAttribute("class", "active-user active-user--selected");
           const talkingWithInfo = document.getElementById("talking-with-info");
           talkingWithInfo.innerHTML = `Talking with: "Socket: ${socketId}"`;
-          callUser(socketId);
+          socket.emit("tell-clicked", { from: socket.id, to: socketId })
           targetSocket = socketId;
         });
         return userContainerEl;
       }
 
+      socket.on("now-you-host", data => {
+        callUser(data.from);
+      })
+
       function callUser(socketId) {
-        if (window.connect) {
-          return
-        }
+        console.log('click!');
+        
         if (socketId == socket.id) {
           alert("Cannot call self");
           return;
         }
-
-        window.peer = new Peer({ initiator: true, stream: stream, tickle: false });
-        window.peer.on('stream', remote_stream => {
+        obj.connect = false;
+        obj.peer = new Peer({ initiator: true, stream: stream, tickle: false });
+        obj.peer.on('stream', remote_stream => {
           console.log("Got stream!");
           document.getElementById("remote-video").srcObject = remote_stream;
           // document.getElementById("remote-video").play();
         });
-        window.peer.on('signal', data => {
+        obj.peer.on('signal', data => {
+          if (obj.connect) {
+            return;
+          }
           console.log("Host signal");
           socket.emit('call-user', {
             data: data,
@@ -8241,29 +8247,26 @@ navigator.mediaDevices.getUserMedia(
       socket.on("call-made", respondUser);
 
       function respondUser(offer) {
-        if (window.connect) {
-          return;
-        }
-        window.peer = new Peer({ initiator: false, stream: stream, tickle: false });
-        window.peer.on('stream', remote_stream => {
+        obj.peer = new Peer({ initiator: false, stream: stream, tickle: false });
+        obj.peer.on('stream', remote_stream => {
           document.getElementById("remote-video").srcObject = remote_stream;
-          document.getElementById("remote-video").play();
+          // document.getElementById("remote-video").play();
         });
-        window.peer.on('signal', data => {
+        obj.peer.on('signal', data => {
           console.log("Follower signal");
           socket.emit('response', {
             data: data,
             id: socket.id,
           });
         });
-        window.peer.signal(offer);
-        window.connect = true;
+        obj.peer.signal(offer);
       }
 
       socket.on("final", data => {
         console.log(data);
-        window.peer.signal(data.data);
-        window.connect = true;
+        obj.peer.signal(data.data);
+        obj.connect = true;
+        console.log("finally connected");
       });
 
 
