@@ -108,6 +108,10 @@ var peerConnection = new RTCPeerConnection({
   iceServers: [     // Information about ICE servers - Use your own!
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:global.stun.twilio.com:3478?transport=udp' },
+    { urls: 'turn:64.233.165.127:19305?transport=udp' },
+    { urls: 'turn:[2A00:1450:4010:C01::7F]:19305?transport=udp'},
+    { urls: 'turn:64.233.165.127:443?transport=tcp' },
+    { urls: 'turn:[2A00:1450:4010:C01::7F]:443?transport=tcp'},
   //  { urls: 'stun:stun2.l.google.com:19302' },
    // { urls: 'stun:stun3.l.google.com:19302' },
    // { urls: 'stun:stun4.l.google.com:19302' }
