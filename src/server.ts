@@ -9,7 +9,7 @@ export class Server {
   private io: SocketIOServer;
   private activeSockets: string[] = [];
 
-  private readonly DEFAULT_PORT = 80;
+  private readonly DEFAULT_PORT = 45;
 
   constructor() {
     this.app = express();

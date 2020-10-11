@@ -6,7 +6,7 @@
   "scripts": {
     "init": "tsc --init",
     "start": "ts-node src/index.ts",
-    "dev": "nodemon --watch 'src/**/*.ts' --exec ts-node src/index.ts"
+    "dev": "browserify ./src/pages/index.js -o ./src/pages/bundle.js && nodemon --watch 'src/**/*.ts' --exec ts-node src/index.ts"
   },
   "repository": {
     "type": "git",
@@ -26,6 +26,7 @@
   "homepage": "https://github.com/Soldann/subtitled-video-chat#readme",
   "dependencies": {
     "express": "^4.17.1",
+    "simple-peer": "^9.7.2",
     "socket.io": "^2.3.0"
   },
   "devDependencies": {
