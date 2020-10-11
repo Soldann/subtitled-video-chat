@@ -19,7 +19,7 @@ const CreateCall = () => {
       const Peer = module.default;
       const peer = new Peer({
         host: 'polar-escarpment-94286.herokuapp.com',
-        port: 80,
+        port: 443,
       });
       peer.on('open', (id) => {
         setPeerId(id);
