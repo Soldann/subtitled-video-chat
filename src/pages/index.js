@@ -40,7 +40,10 @@ var socket = io();
 
 // video streaming code
 
-let Peer = require('simple-peer')
+let Peer = require('simple-peer');
+
+console.log('hi');
+window.connect = false;
 
 navigator.mediaDevices.getUserMedia(
   { video: true, audio: true }).then(
@@ -48,11 +51,12 @@ navigator.mediaDevices.getUserMedia(
       const localVideo = document.getElementById("local-video");
       if (localVideo) {
         localVideo.srcObject = stream;
+        localVideo.autoplay = true;
       }
 
       socket.on("update-user-list", ({ users }) => {
         updateUserList(users);
-        console.log("hello workd");
+        console.log(users);
       });
 
       function updateUserList(socketIds) {
@@ -92,34 +96,56 @@ navigator.mediaDevices.getUserMedia(
       }
 
       function callUser(socketId) {
+        if (window.connect) {
+          return
+        }
         if (socketId == socket.id) {
           alert("Cannot call self");
           return;
         }
 
         window.peer = new Peer({ initiator: true, stream: stream, tickle: false });
-        peer.on('stream', stream => {
-          document.getElementById("remote-video").srcObject = stream;
-          document.getElementById("remote-video").play();
+        window.peer.on('stream', remote_stream => {
+          console.log("Got stream!");
+          document.getElementById("remote-video").srcObject = remote_stream;
+          // document.getElementById("remote-video").play();
         });
-        peer.on('signal', data => {
-          socket.emit('call-user', data);
+        window.peer.on('signal', data => {
+          console.log("Host signal");
+          socket.emit('call-user', {
+            data: data,
+            to: socketId,
+          });
         });
       }
+
+      socket.on("call-made", respondUser);
 
       function respondUser(offer) {
+        if (window.connect) {
+          return;
+        }
         window.peer = new Peer({ initiator: false, stream: stream, tickle: false });
-        peer.on('stream', stream => {
-          document.getElementById("remote-video").srcObject = stream;
+        window.peer.on('stream', remote_stream => {
+          document.getElementById("remote-video").srcObject = remote_stream;
           document.getElementById("remote-video").play();
         });
-        peer.on('signal', data => {
-          socket.emit('response', data);
+        window.peer.on('signal', data => {
+          console.log("Follower signal");
+          socket.emit('response', {
+            data: data,
+            id: socket.id,
+          });
         });
-        peer.signal(offer);
+        window.peer.signal(offer);
+        window.connect = true;
       }
 
-
+      socket.on("final", data => {
+        console.log(data);
+        window.peer.signal(data.data);
+        window.connect = true;
+      });
 
 
 
@@ -139,60 +165,23 @@ socket.on("remove-user", ({ socketId }) => {
   }
 });
 
-const { RTCPeerConnection, RTCSessionDescription } = window;
-var peerConnection = new RTCPeerConnection({
-  iceServers: [     // Information about ICE servers - Use your own!
-    { urls: 'stun:stun.l.google.com:19302' },
-    // { urls: 'stun:stun1.l.google.com:19302' },
-    //  { urls: 'stun:stun2.l.google.com:19302' },
-    // { urls: 'stun:stun3.l.google.com:19302' },
-    // { urls: 'stun:stun4.l.google.com:19302' }
-  ]
-});
 
-function handleICECandidateEvent(event) {
-  if (event.candidate) {
-    socket.emit("new-ice-candidate", {
-      target: targetSocket,
-      candidate: event.candidate,
-    });
-  }
-}
+// let isAlreadyCalling = false;
 
+// socket.on("answer-made", async data => {
+//   await peerConnection.setRemoteDescription(
+//     new RTCSessionDescription(data.answer)
+//   );
+//   console.log("answer made1");
+//   if (!isAlreadyCalling) {
+//     //callUser(data.socket);
+//     isAlreadyCalling = true;
+//   }
 
-socket.on("call-made", async (data) => {
-  await peerConnection.setRemoteDescription(
-    new RTCSessionDescription(data.offer)
-  );
+//   console.log("answer made");
 
-  var localStream = document.getElementById("local-video").srcObject;  // stream.getVideoTracks()[0];
-  localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+// });
 
-  const answer = await peerConnection.createAnswer();
-  await peerConnection.setLocalDescription(new RTCSessionDescription(answer));
-
-  socket.emit("make-answer", {
-    answer: peerConnection.localDescription,
-    to: data.socket,
-  });
-});
-
-let isAlreadyCalling = false;
-
-socket.on("answer-made", async data => {
-  await peerConnection.setRemoteDescription(
-    new RTCSessionDescription(data.answer)
-  );
-  console.log("answer made1");
-  if (!isAlreadyCalling) {
-    //callUser(data.socket);
-    isAlreadyCalling = true;
-  }
-
-  console.log("answer made");
-
-});
-
-socket.on("send-ice-candidate", async data => {
-  peerConnection.addIceCandidate(data.candidate);
-});
+// socket.on("send-ice-candidate", async data => {
+//   peerConnection.addIceCandidate(data.candidate);
+// });

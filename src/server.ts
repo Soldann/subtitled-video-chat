@@ -60,10 +60,7 @@ export class Server {
 
         socket.on("call-user", (data) => {
           console.log("sending call");
-          socket.to(data.to).emit("call-made", {
-            offer: data.offer,
-            socket: socket.id,
-          });
+          socket.to(data.to).emit("call-made", data.data);
         });
 
         socket.on("make-answer", (data) => {
@@ -72,6 +69,10 @@ export class Server {
             socket: socket.id,
             answer: data.answer,
           });
+        });
+
+        socket.on("response", data => {
+          socket.broadcast.emit("final", data);
         });
 
         socket.on("new-ice-candidate", (data) => {
